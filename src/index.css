@@ -358,7 +358,7 @@ input {
 
 .doc-row {
   display: grid;
-  grid-template-columns: 28px 1fr 90px 150px 90px;
+  grid-template-columns: 28px 1fr 86px 76px 150px 90px;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
@@ -372,6 +372,10 @@ input {
 
 .doc-row:hover {
   background: var(--surface-muted);
+}
+
+.doc-row.dragging {
+  opacity: 0.48;
 }
 
 .doc-row.header-row {
@@ -458,6 +462,10 @@ input {
 
 .pane-left {
   border-right: none;
+}
+
+.pane-right {
+  position: relative;
 }
 
 .pane-divider {
@@ -594,10 +602,20 @@ input {
 
 .pane-info-block {
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .pane-info-detail {
   margin-top: 10px;
+  width: 100%;
+}
+
+.pane-word-count {
+  color: var(--ink-faint);
+  font-size: 12px;
 }
 
 .pane-content-actions {
@@ -696,6 +714,146 @@ input {
 
 .editor-textarea:focus {
   outline: none;
+}
+
+.tool-popover {
+  position: absolute;
+  top: 56px;
+  right: 20px;
+  z-index: 25;
+  width: min(520px, calc(100% - 40px));
+  max-height: min(620px, calc(100% - 92px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.snippet-popover {
+  width: min(620px, calc(100% - 40px));
+}
+
+.tool-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tool-popover-list {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 10px 0;
+}
+
+.tool-empty {
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 14px 4px;
+  text-align: center;
+}
+
+.variable-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 72px auto auto 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.tool-input,
+.tool-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.tool-input {
+  padding: 7px 9px;
+}
+
+.tool-textarea {
+  min-height: 92px;
+  resize: vertical;
+  padding: 9px;
+  line-height: 1.65;
+}
+
+.variable-name-input {
+  min-width: 0;
+}
+
+.variable-value-input {
+  text-align: center;
+}
+
+.tool-add-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 72px auto;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
+.snippet-row {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 10px 0;
+}
+
+.snippet-row:last-child {
+  border-bottom: none;
+}
+
+.snippet-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.snippet-insert-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.snippet-insert-btn:hover {
+  color: var(--accent-strong);
+}
+
+.snippet-row .tool-input {
+  margin-bottom: 6px;
+}
+
+.snippet-add-box {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
+.tool-actions-right {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .editor-footer {

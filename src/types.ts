@@ -15,6 +15,18 @@ export interface CharacterName {
   pinnedAt?: number;
 }
 
+export interface NotebookVariable {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface SnippetTemplate {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export interface DocItem {
   id: string;
   notebookId: string;
@@ -30,6 +42,9 @@ export interface Notebook {
   name: string;
   createdAt: number;
   characters: CharacterName[];
+  variables: NotebookVariable[];
+  snippets: SnippetTemplate[];
+  docOrder: string[];
 }
 
 export interface Workspace {

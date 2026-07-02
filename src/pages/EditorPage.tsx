@@ -4,6 +4,7 @@ import { Route } from "../useHashRoute";
 import { DOC_TYPE_LABEL, DOC_TYPES, DocItem, DocType, Notebook } from "../types";
 import { CharacterMenu } from "../components/CharacterMenu";
 import { getCaretCoordinates } from "../utils/caretPosition";
+import { countText, formatWordCount } from "../utils/wordCount";
 
 const SPLIT_KEY = "nw:splitRatio";
 
@@ -27,6 +28,12 @@ export default function EditorPage({
     addCharacter,
     pinCharacter,
     deleteCharacter,
+    addNotebookVariable,
+    updateNotebookVariable,
+    deleteNotebookVariable,
+    addSnippetTemplate,
+    updateSnippetTemplate,
+    deleteSnippetTemplate,
   } = useWorkspace();
 
   const docs = getDocumentsFor(notebook.id);
@@ -101,6 +108,11 @@ export default function EditorPage({
   const [writeTargetId, setWriteTargetId] = useState(doc.id);
   const [draftText, setDraftText] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [activeToolPanel, setActiveToolPanel] = useState<"variables" | "snippets" | null>(null);
+  const [newVariableName, setNewVariableName] = useState("");
+  const [newVariableValue, setNewVariableValue] = useState("0");
+  const [newSnippetName, setNewSnippetName] = useState("");
+  const [newSnippetContent, setNewSnippetContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const keepSlashOpenRef = useRef(false);
 
@@ -110,6 +122,8 @@ export default function EditorPage({
   }, [doc.id]);
 
   const writeTargetDoc = docs.find((d) => d.id === writeTargetId);
+  const variables = notebook.variables ?? [];
+  const snippets = notebook.snippets ?? [];
 
   // --- slash character menu ---
   const [slash, setSlash] = useState<{ start: number; query: string; top: number; left: number } | null>(null);
@@ -216,7 +230,36 @@ export default function EditorPage({
     setTimeout(() => setSavedFlash(false), 1800);
   };
 
-  const wordCount = draftText.length;
+  const handleAddVariable = () => {
+    if (!newVariableName.trim()) return;
+    addNotebookVariable(notebook.id, newVariableName.trim(), Number(newVariableValue) || 0);
+    setNewVariableName("");
+    setNewVariableValue("0");
+  };
+
+  const handleAddSnippet = () => {
+    if (!newSnippetName.trim() || !newSnippetContent.trim()) return;
+    addSnippetTemplate(notebook.id, newSnippetName.trim(), newSnippetContent);
+    setNewSnippetName("");
+    setNewSnippetContent("");
+  };
+
+  const insertSnippet = (content: string) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? draftText.length;
+    const end = el?.selectionEnd ?? start;
+    const newValue = draftText.slice(0, start) + content + draftText.slice(end);
+    setDraftText(newValue);
+    saveDraft(doc.id, newValue);
+    const newCursor = start + content.length;
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(newCursor, newCursor);
+    });
+  };
+
+  const wordCount = countText(draftText);
+  const leftDocWordCount = countText(leftSelectedDoc?.content ?? "");
 
   return (
     <div className="app-shell">
@@ -309,6 +352,7 @@ export default function EditorPage({
                       >
                         文档信息
                       </button>
+                      <span className="pane-word-count">{formatWordCount(leftDocWordCount)}</span>
                       {leftInfoOpen && (
                         <div className="pane-info-detail">
                           <h3 className="pane-content-title">{leftSelectedDoc.title}</h3>
@@ -414,11 +458,155 @@ export default function EditorPage({
                   </option>
                 ))}
               </select>
+              <button
+                className={`btn btn-sm${activeToolPanel === "variables" ? " btn-primary" : ""}`}
+                onClick={() => setActiveToolPanel((panel) => (panel === "variables" ? null : "variables"))}
+              >
+                数值
+              </button>
+              <button
+                className={`btn btn-sm${activeToolPanel === "snippets" ? " btn-primary" : ""}`}
+                onClick={() => setActiveToolPanel((panel) => (panel === "snippets" ? null : "snippets"))}
+              >
+                常用片段
+              </button>
               <div style={{ flex: 1 }} />
               <button className="btn btn-primary btn-sm" disabled={!draftText.trim()} onClick={handleSave}>
                 保存
               </button>
             </div>
+
+            {activeToolPanel === "variables" && (
+              <div className="tool-popover">
+                <div className="tool-popover-head">
+                  <strong>变量面板</strong>
+                  <button className="icon-btn" onClick={() => setActiveToolPanel(null)}>
+                    ✕
+                  </button>
+                </div>
+                <div className="tool-popover-list">
+                  {variables.length === 0 && <div className="tool-empty">还没有变量</div>}
+                  {variables.map((variable) => (
+                    <div className="variable-row" key={variable.id}>
+                      <input
+                        className="tool-input variable-name-input"
+                        value={variable.name}
+                        onChange={(e) =>
+                          updateNotebookVariable(notebook.id, variable.id, { name: e.target.value })
+                        }
+                      />
+                      <input
+                        className="tool-input variable-value-input"
+                        type="number"
+                        value={variable.value}
+                        onChange={(e) =>
+                          updateNotebookVariable(notebook.id, variable.id, { value: Number(e.target.value) || 0 })
+                        }
+                      />
+                      <button
+                        className="btn btn-sm"
+                        onClick={() =>
+                          updateNotebookVariable(notebook.id, variable.id, { value: variable.value - 1 })
+                        }
+                      >
+                        -1
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() =>
+                          updateNotebookVariable(notebook.id, variable.id, { value: variable.value + 1 })
+                        }
+                      >
+                        +1
+                      </button>
+                      <button className="icon-btn" onClick={() => deleteNotebookVariable(notebook.id, variable.id)}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="tool-add-row">
+                  <input
+                    className="tool-input"
+                    placeholder="变量名称"
+                    value={newVariableName}
+                    onChange={(e) => setNewVariableName(e.target.value)}
+                  />
+                  <input
+                    className="tool-input variable-value-input"
+                    type="number"
+                    value={newVariableValue}
+                    onChange={(e) => setNewVariableValue(e.target.value)}
+                  />
+                  <button className="btn btn-primary btn-sm" disabled={!newVariableName.trim()} onClick={handleAddVariable}>
+                    新增
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeToolPanel === "snippets" && (
+              <div className="tool-popover snippet-popover">
+                <div className="tool-popover-head">
+                  <strong>常用片段</strong>
+                  <button className="icon-btn" onClick={() => setActiveToolPanel(null)}>
+                    ✕
+                  </button>
+                </div>
+                <div className="tool-popover-list">
+                  {snippets.length === 0 && <div className="tool-empty">还没有常用片段</div>}
+                  {snippets.map((snippet) => (
+                    <div className="snippet-row" key={snippet.id}>
+                      <div className="snippet-row-head">
+                        <button className="snippet-insert-btn" onClick={() => insertSnippet(snippet.content)}>
+                          {snippet.name}
+                        </button>
+                        <button className="icon-btn" onClick={() => deleteSnippetTemplate(notebook.id, snippet.id)}>
+                          ✕
+                        </button>
+                      </div>
+                      <input
+                        className="tool-input"
+                        value={snippet.name}
+                        onChange={(e) =>
+                          updateSnippetTemplate(notebook.id, snippet.id, { name: e.target.value })
+                        }
+                      />
+                      <textarea
+                        className="tool-textarea"
+                        value={snippet.content}
+                        onChange={(e) =>
+                          updateSnippetTemplate(notebook.id, snippet.id, { content: e.target.value })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="snippet-add-box">
+                  <input
+                    className="tool-input"
+                    placeholder="片段名称"
+                    value={newSnippetName}
+                    onChange={(e) => setNewSnippetName(e.target.value)}
+                  />
+                  <textarea
+                    className="tool-textarea"
+                    placeholder="片段内容"
+                    value={newSnippetContent}
+                    onChange={(e) => setNewSnippetContent(e.target.value)}
+                  />
+                  <div className="tool-actions-right">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={!newSnippetName.trim() || !newSnippetContent.trim()}
+                      onClick={handleAddSnippet}
+                    >
+                      新增片段
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="editor-write-area">
               <textarea

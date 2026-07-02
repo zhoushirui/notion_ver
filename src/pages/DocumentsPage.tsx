@@ -5,6 +5,7 @@ import { Modal, ConfirmModal, PromptModal } from "../components/Modal";
 import { DOC_TYPE_LABEL, DOC_TYPES, DocItem, DocType, Notebook } from "../types";
 import { exportManyDocx, exportSingleDocx } from "../utils/docxExport";
 import { extractTextFromDocx } from "../utils/docxImport";
+import { countText, formatWordCount } from "../utils/wordCount";
 
 function NewDocumentModal({
   onClose,
@@ -148,8 +149,15 @@ export default function DocumentsPage({
   notebook: Notebook;
   onNavigate: (r: Route) => void;
 }) {
-  const { getDocumentsFor, createDocument, renameDocument, setDocumentType, deleteDocument, appendToDocument } =
-    useWorkspace();
+  const {
+    getDocumentsFor,
+    createDocument,
+    renameDocument,
+    setDocumentType,
+    deleteDocument,
+    appendToDocument,
+    reorderDocuments,
+  } = useWorkspace();
   const docs = getDocumentsFor(notebook.id);
 
   const [creating, setCreating] = useState(false);
@@ -157,6 +165,7 @@ export default function DocumentsPage({
   const [renaming, setRenaming] = useState<DocItem | null>(null);
   const [deleting, setDeleting] = useState<DocItem | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -168,6 +177,17 @@ export default function DocumentsPage({
   };
 
   const selectedDocs = docs.filter((d) => selected.has(d.id));
+
+  const moveDocument = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const orderedIds = docs.map((d) => d.id);
+    const sourceIndex = orderedIds.indexOf(sourceId);
+    const targetIndex = orderedIds.indexOf(targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+    const [moved] = orderedIds.splice(sourceIndex, 1);
+    orderedIds.splice(targetIndex, 0, moved);
+    reorderDocuments(notebook.id, orderedIds);
+  };
 
   return (
     <div className="app-shell">
@@ -216,13 +236,31 @@ export default function DocumentsPage({
                 <span />
                 <span>标题</span>
                 <span>类型</span>
+                <span>字数</span>
                 <span>更新时间</span>
                 <span />
               </div>
               {docs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="doc-row"
+                  className={`doc-row${draggingId === doc.id ? " dragging" : ""}`}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggingId(doc.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", doc.id);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const sourceId = e.dataTransfer.getData("text/plain") || draggingId;
+                    if (sourceId) moveDocument(sourceId, doc.id);
+                    setDraggingId(null);
+                  }}
+                  onDragEnd={() => setDraggingId(null)}
                   onClick={() => onNavigate({ name: "editor", notebookId: notebook.id, docId: doc.id })}
                 >
                   <input
@@ -244,6 +282,7 @@ export default function DocumentsPage({
                       </option>
                     ))}
                   </select>
+                  <span className="doc-meta">{formatWordCount(countText(doc.content))}</span>
                   <span className="doc-meta">{new Date(doc.updatedAt).toLocaleString("zh-CN")}</span>
                   <div className="doc-row-actions" onClick={(e) => e.stopPropagation()}>
                     <button className="icon-btn" title="导出" onClick={() => exportSingleDocx(doc)}>

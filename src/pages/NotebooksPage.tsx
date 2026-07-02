@@ -5,6 +5,7 @@ import { PromptModal, ConfirmModal } from "../components/Modal";
 import { exportBackup, importBackupFile } from "../utils/backup";
 import { Notebook } from "../types";
 import { extractTextFromDocx, normalizeImportedText } from "../utils/docxImport";
+import { countText, formatWordCount } from "../utils/wordCount";
 
 const SUPPORTED_FOLDER_EXTENSIONS = [".docx", ".txt", ".md"];
 
@@ -32,6 +33,11 @@ export default function NotebooksPage({ onNavigate }: { onNavigate: (r: Route) =
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const notebooks = [...workspace.notebooks].sort((a, b) => b.createdAt - a.createdAt);
+
+  const getNotebookWordCount = (notebookId: string) =>
+    workspace.documents
+      .filter((doc) => doc.notebookId === notebookId)
+      .reduce((total, doc) => total + countText(doc.content), 0);
 
   const handleImportBackup = async (file: File) => {
     try {
@@ -149,7 +155,7 @@ export default function NotebooksPage({ onNavigate }: { onNavigate: (r: Route) =
                   </div>
                   <h3 className="notebook-card-name">{nb.name}</h3>
                   <div className="notebook-card-meta">
-                    {new Date(nb.createdAt).toLocaleDateString("zh-CN")} 创建
+                    {formatWordCount(getNotebookWordCount(nb.id))} · {new Date(nb.createdAt).toLocaleDateString("zh-CN")} 创建
                   </div>
                 </div>
               ))}
